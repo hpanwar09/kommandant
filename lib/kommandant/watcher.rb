@@ -116,9 +116,7 @@ module Kommandant
       @tracker.record_working!
 
       # Check for promotion
-      if @tracker.check_promotion!
-        puts pastel.green("PROMOTED to #{@tracker.rank}! Herr Kommandant approves!")
-      end
+      puts pastel.green("PROMOTED to #{@tracker.rank}! Herr Kommandant approves!") if @tracker.check_promotion!
 
       # If was slacking, praise return to work
       return unless @was_slacking
@@ -150,7 +148,6 @@ module Kommandant
         rank: @tracker.rank,
         streak: @tracker.streak_minutes
       )
-
 
       # Demote on tier 3+
       if current_tier >= 3
@@ -201,7 +198,7 @@ module Kommandant
       today = Time.now.wday
 
       if start_day <= end_day
-        today >= start_day && today <= end_day
+        today.between?(start_day, end_day)
       else
         today >= start_day || today <= end_day
       end
@@ -215,9 +212,9 @@ module Kommandant
       end_h, end_m = parts[1].split(':').map(&:to_i)
 
       now = Time.now
-      now_minutes = now.hour * 60 + now.min
-      start_minutes = start_h * 60 + (start_m || 0)
-      end_minutes = end_h * 60 + (end_m || 0)
+      now_minutes = (now.hour * 60) + now.min
+      start_minutes = (start_h * 60) + (start_m || 0)
+      end_minutes = (end_h * 60) + (end_m || 0)
 
       now_minutes >= start_minutes && now_minutes < end_minutes
     end
@@ -234,7 +231,7 @@ module Kommandant
       return unless now.strftime('%Y-%m-%d') != @last_midnight_check.strftime('%Y-%m-%d')
 
       puts pastel.cyan('[Kommandant] Midnight! Generating daily report...')
-      puts pastel.cyan('[Kommandant] Daily stats: ' + @tracker.daily_stats.inspect)
+      puts pastel.cyan("[Kommandant] Daily stats: #{@tracker.daily_stats.inspect}")
       @tracker.reset_daily!
       reset_slack_accumulator!
       @last_midnight_check = now
@@ -273,7 +270,7 @@ module Kommandant
     end
 
     def delete_pid!
-      File.delete(PID_PATH) if File.exist?(PID_PATH)
+      FileUtils.rm_f(PID_PATH)
     rescue Errno::ENOENT, Errno::EACCES
       # Ignore
     end

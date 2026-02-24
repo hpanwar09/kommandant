@@ -83,7 +83,7 @@ module Kommandant
     # @param streak_minutes [Integer] how many minutes of focused work
     def praise(rank: nil, streak_minutes: 0) # rubocop:disable Lint/UnusedMethodArgument
       pair = PRAISE_LINES.sample
-      message = if streak_minutes > 0
+      message = if streak_minutes.positive?
                   "#{pair[:de]} (#{streak_minutes} min focused)"
                 else
                   pair[:de]
@@ -153,7 +153,7 @@ module Kommandant
         sound: 'Tink'
       )
       play_sound(:submarine)
-      set_volume(100)
+      change_volume(100)
 
       if voice_enabled?
         pairs = LINES.sample(LINES_PER_TIER[4])
@@ -215,8 +215,8 @@ module Kommandant
     end
 
     # Set macOS output volume (0-100).
-    def set_volume(level)
-      level = [[level.to_i, 0].max, 100].min
+    def change_volume(level)
+      level = level.to_i.clamp(0, 100)
       safe_system("osascript -e 'set volume output volume #{level}'")
     end
 

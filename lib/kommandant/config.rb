@@ -70,20 +70,8 @@ module Kommandant
         salesforce.com
         lightning.force.com
         confluence.com
-        bitbucket.org
-        gitlab.com
-        linear.app
         notion.so
         figma.com
-        vercel.com
-        heroku.com
-        aws.amazon.com
-        console.cloud.google.com
-        portal.azure.com
-        datadog.com
-        sentry.io
-        grafana.com
-        pagerduty.com
         circleci.com
         travis-ci.com
         rubygems.org
@@ -204,7 +192,7 @@ module Kommandant
 
       def write_defaults!
         dir = File.dirname(CONFIG_PATH)
-        FileUtils.mkdir_p(dir) unless Dir.exist?(dir)
+        FileUtils.mkdir_p(dir)
         File.write(CONFIG_PATH, serialize(@config || DEFAULTS))
       rescue Errno::EACCES => e
         warn "[Kommandant::Config] Could not write #{CONFIG_PATH}: #{e.message}"
@@ -276,7 +264,7 @@ module Kommandant
       def deep_dup(obj)
         case obj
         when Hash
-          obj.each_with_object({}) { |(k, v), h| h[k] = deep_dup(v) }
+          obj.transform_values { |v| deep_dup(v) }
         when Array
           obj.map { |v| deep_dup(v) }
         else
@@ -289,8 +277,8 @@ module Kommandant
       def stringify_keys(obj)
         case obj
         when Hash
-          obj.each_with_object({}) do |(k, v), h|
-            h[k] = stringify_keys(v)
+          obj.transform_values do |v|
+            stringify_keys(v)
           end
         when Array
           obj.map { |v| stringify_keys(v) }

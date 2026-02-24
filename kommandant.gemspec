@@ -9,13 +9,18 @@ Gem::Specification.new do |spec|
   spec.email = ['hpanwar@g2.com']
 
   spec.summary = 'Herr Kommandant keeps you focused with German military discipline'
-  spec.description = 'A productivity enforcement gem that monitors your activity and delivers escalating German-accented warnings when you slack off. Features idle detection, app monitoring, browser tab checking, and a tiered punishment system from gentle nudges to full interventions.'
+  spec.description = <<~DESC.tr("\n", ' ').strip
+    A productivity enforcement gem that monitors your activity and delivers escalating
+    German-accented warnings when you slack off. Features idle detection, app monitoring,
+    browser tab checking, and a tiered punishment system from gentle nudges to full interventions.
+  DESC
   spec.homepage = 'https://github.com/hpanwar09/kommandant'
   spec.license = 'MIT'
   spec.required_ruby_version = '>= 3.2.0'
 
   spec.metadata['homepage_uri'] = spec.homepage
   spec.metadata['source_code_uri'] = 'https://github.com/hpanwar09/kommandant'
+  spec.metadata['rubygems_mfa_required'] = 'true'
 
   gemspec = File.basename(__FILE__)
   spec.files = IO.popen(%w[git ls-files -z], chdir: __dir__, err: IO::NULL) do |ls|

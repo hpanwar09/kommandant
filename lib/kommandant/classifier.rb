@@ -188,7 +188,7 @@ module Kommandant
       mins = seconds / 60
       secs = seconds % 60
 
-      if mins > 0
+      if mins.positive?
         "#{mins}m #{secs}s"
       else
         "#{secs}s"
@@ -197,7 +197,7 @@ module Kommandant
 
     # Format a reason string with accumulated time if > 0.
     def format_reason(base, accumulated)
-      if accumulated > 0
+      if accumulated.positive?
         "#{base} for #{format_duration(accumulated)}"
       else
         base

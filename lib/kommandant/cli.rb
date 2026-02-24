@@ -97,7 +97,8 @@ module Kommandant
       suppress_until = Time.now + seconds
       File.write(File.expand_path('~/.kommandant_suppress'), suppress_until.iso8601)
       minutes = (seconds / 60.0).ceil
-      puts "Patrol suppressed for #{minutes} minutes. Herr Kommandant grants you leave until #{suppress_until.strftime('%H:%M')}."
+      puts "Patrol suppressed for #{minutes} minutes. " \
+           "Herr Kommandant grants you leave until #{suppress_until.strftime('%H:%M')}."
     end
 
     desc 'version', 'Show version'

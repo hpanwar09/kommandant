@@ -38,3 +38,41 @@ Style/HashSyntax:
 
 Style/RedundantConstantBase:
   Enabled: false
+
+Gemspec/DevelopmentDependencies:
+  Enabled: false
+
+Metrics/ClassLength:
+  Exclude:
+    - lib/kommandant/classifier.rb
+    - lib/kommandant/cli.rb
+    - lib/kommandant/config.rb
+    - lib/kommandant/detector.rb
+    - lib/kommandant/notifier.rb
+    - lib/kommandant/tracker.rb
+    - lib/kommandant/watcher.rb
+
+Metrics/ModuleLength:
+  Exclude:
+    - lib/kommandant/config.rb
+
+Metrics/MethodLength:
+  Max: 35
+
+Metrics/AbcSize:
+  Max: 40
+
+Metrics/CyclomaticComplexity:
+  Max: 20
+
+Metrics/PerceivedComplexity:
+  Max: 20
+
+Metrics/ParameterLists:
+  Max: 6
+
+Naming/AccessorMethodName:
+  Enabled: false
+
+Naming/PredicateMethod:
+  Enabled: false
