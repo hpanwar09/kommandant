@@ -93,25 +93,19 @@ module Kommandant
       'tiers' => {
         1 => {
           'enabled' => true,
-          'after' => 60,
-          'sound' => 'soft',
-          'voice' => false
+          'after' => 60
         },
         2 => {
           'enabled' => true,
-          'after' => 180,
-          'sound' => 'hard',
-          'voice' => true
+          'after' => 300
         },
         3 => {
-          'enabled' => false,
-          'after' => 300,
-          'video' => true,
-          'volume' => 80
+          'enabled' => true,
+          'after' => 600
         },
         4 => {
           'enabled' => false,
-          'after' => 900
+          'after' => 1500
         }
       },
       'schedule' => {
@@ -119,7 +113,6 @@ module Kommandant
         'active_days' => 'mon-fri'
       }
     }.freeze
-
     class << self
       # Load config from disk. Creates default file if missing.
       # Returns the loaded config hash.

@@ -14,7 +14,7 @@ module Kommandant
     }.freeze
 
     # Default thresholds (seconds) used when config is unavailable
-    DEFAULT_THRESHOLDS = { 1 => 60, 2 => 180, 3 => 300, 4 => 900 }.freeze
+    DEFAULT_THRESHOLDS = { 1 => 60, 2 => 300, 3 => 600, 4 => 1500 }.freeze
 
     class << self
       # Determine the appropriate tier based on accumulated slack seconds.
@@ -60,7 +60,7 @@ module Kommandant
 
         # Treat nil as enabled by default for tiers 1–2, disabled for 3–4
         if value.nil?
-          tier_number <= 2
+          tier_number <= 3
         else
           !!value
         end

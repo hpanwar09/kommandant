@@ -2,40 +2,43 @@
 
 module Kommandant
   # Delivers macOS notifications, sounds, and TTS based on tier level.
-  # Respects config for voice.enabled, tier.enabled, and voice settings.
+  # Pattern: Tink sound → German lines (Anna) → English translation (Daniel/Samantha)
+  # Exception: Tier 3 = silent, just opens video fullscreen.
   # All system calls are wrapped in begin/rescue — never crashes.
   class Notifier
-    GERMAN_TIER2_LINES = [
-      'Achtung! Was machen Sie da?',
-      'Zurück an die Arbeit, sofort!',
-      'Das ist unakzeptabel!',
-      'Herr Kommandant ist nicht erfreut!',
-      'Sie sind eine Enttäuschung!',
-      'Disziplin! Haben Sie das vergessen?',
-      'Ich beobachte Sie! Arbeiten Sie!',
-      'Schluss mit dem Unsinn!'
+    # German lines paired with English translations.
+    # Each tier picks N pairs (scaling up with severity).
+    LINES = [
+      { de: 'Achtung! Was machen Sie da?', en: 'Attention! What are you doing?' },
+      { de: 'Zurück an die Arbeit, sofort!', en: 'Back to work, immediately!' },
+      { de: 'Das ist unakzeptabel!', en: 'This is unacceptable!' },
+      { de: 'Herr Kommandant ist nicht erfreut!', en: 'Herr Kommandant is not pleased!' },
+      { de: 'Sie sind eine Enttäuschung!', en: 'You are a disappointment!' },
+      { de: 'Disziplin! Haben Sie das vergessen?', en: 'Discipline! Have you forgotten that?' },
+      { de: 'Ich beobachte Sie! Arbeiten Sie!', en: 'I am watching you! Get to work!' },
+      { de: 'Schluss mit dem Unsinn!', en: 'Enough with the nonsense!' },
+      { de: 'Das ist Ihre letzte Warnung!', en: 'This is your final warning!' },
+      { de: 'Herr Kommandant verliert die Geduld!', en: 'Herr Kommandant is losing patience!' },
+      { de: 'Sie haben es so gewollt!', en: 'You asked for this!' },
+      { de: 'Die Konsequenzen sind unvermeidlich!', en: 'The consequences are inevitable!' },
+      { de: 'Drei Mal habe ich Sie gewarnt!', en: 'Three times I have warned you!' },
+      { de: 'Jetzt reicht es!', en: 'That is enough!' },
+      { de: 'ALARM! ALARM! TOTALER ARBEITSVERWEIGERUNG FESTGESTELLT!',
+        en: 'ALARM! ALARM! TOTAL WORK REFUSAL DETECTED!' },
+      { de: 'ACHTUNG! SOFORTIGE RÜCKKEHR ZUR ARBEIT!', en: 'ATTENTION! IMMEDIATE RETURN TO WORK!' },
+      { de: 'HERR KOMMANDANT HAT GENUG!', en: 'HERR KOMMANDANT HAS HAD ENOUGH!' },
+      { de: 'DAS IST DER LETZTE BEFEHL!', en: 'THIS IS THE FINAL ORDER!' }
     ].freeze
 
-    GERMAN_TIER3_LINES = [
-      'Das ist Ihre letzte Warnung! Herr Kommandant verliert die Geduld!',
-      'Sie haben es so gewollt! Die Konsequenzen sind unvermeidlich!',
-      'Drei Mal habe ich Sie gewarnt! Jetzt reicht es!',
-      'Sie testen meine Geduld, und meine Geduld hat ein Ende!',
-      'Herr Kommandant greift jetzt zu drastischen Maßnahmen!'
-    ].freeze
-
-    GERMAN_TIER4_LINES = [
-      'ALARM! ALARM! TOTALER ARBEITSVERWEIGERUNG FESTGESTELLT!',
-      'ACHTUNG! SOFORTIGE RÜCKKEHR ZUR ARBEIT ODER ES FOLGEN KONSEQUENZEN!',
-      'HERR KOMMANDANT HAT GENUG! DAS IST DER LETZTE BEFEHL!'
-    ].freeze
+    # How many German+English line pairs per tier
+    LINES_PER_TIER = { 1 => 1, 2 => 2, 3 => 0, 4 => 3 }.freeze
 
     PRAISE_LINES = [
-      'Gut gemacht, Soldat!',
-      'Sehr gut! So ist es richtig!',
-      'Ausgezeichnet! Weiter so!',
-      'Herr Kommandant ist zufrieden!',
-      'Disziplin zahlt sich aus!'
+      { de: 'Gut gemacht, Soldat!', en: 'Well done, soldier!' },
+      { de: 'Sehr gut! So ist es richtig!', en: 'Very good! That is how it should be!' },
+      { de: 'Ausgezeichnet! Weiter so!', en: 'Excellent! Keep it up!' },
+      { de: 'Herr Kommandant ist zufrieden!', en: 'Herr Kommandant is satisfied!' },
+      { de: 'Disziplin zahlt sich aus!', en: 'Discipline pays off!' }
     ].freeze
 
     INTERVENTION_VIDEO = 'https://www.youtube.com/watch?v=OO14VSx74MU'
@@ -67,10 +70,10 @@ module Kommandant
       return unless tier_enabled?(tier)
 
       case tier
-      when 1 then notify_tier1(reason, rank)
-      when 2 then notify_tier2(reason, rank)
-      when 3 then notify_tier3(reason, rank)
-      when 4 then notify_tier4(reason, rank)
+      when 1 then notify_tier1(reason)
+      when 2 then notify_tier2(reason)
+      when 3 then notify_tier3
+      when 4 then notify_tier4(reason)
       end
     end
 
@@ -79,11 +82,11 @@ module Kommandant
     # @param rank [String] optional rank display
     # @param streak_minutes [Integer] how many minutes of focused work
     def praise(rank: nil, streak_minutes: 0) # rubocop:disable Lint/UnusedMethodArgument
-      line = PRAISE_LINES.sample
+      pair = PRAISE_LINES.sample
       message = if streak_minutes > 0
-                  "#{line} #{streak_minutes} minutes focused."
+                  "#{pair[:de]} (#{streak_minutes} min focused)"
                 else
-                  line
+                  pair[:de]
                 end
 
       display_notification(
@@ -96,14 +99,16 @@ module Kommandant
 
       return unless voice_enabled?
 
-      speak(line)
+      speak_german(pair[:de])
+      speak_english(pair[:en])
     end
 
     private
 
     # --- Tier Implementations ---
 
-    def notify_tier1(reason, _rank)
+    # Tier 1 (1 min): Tink → 1 German line → English translation
+    def notify_tier1(reason)
       display_notification(
         message: reason,
         title: '🎖️ Herr Kommandant',
@@ -111,72 +116,77 @@ module Kommandant
         sound: 'Tink'
       )
       play_sound(:tink)
+
+      return unless voice_enabled?
+
+      pairs = LINES.sample(LINES_PER_TIER[1])
+      speak_pairs(pairs)
     end
 
-    def notify_tier2(reason, _rank)
+    # Tier 2 (5 min): Tink → 2 German lines → English translations
+    def notify_tier2(reason)
       display_notification(
         message: reason,
         title: '🎖️ Herr Kommandant',
         subtitle: 'Stern Warning',
-        sound: 'Basso'
+        sound: 'Tink'
       )
-      play_sound(:basso)
+      play_sound(:tink)
 
       return unless voice_enabled?
 
-      line = GERMAN_TIER2_LINES.sample
-      speak(line)
+      pairs = LINES.sample(LINES_PER_TIER[2])
+      speak_pairs(pairs)
     end
 
-    def notify_tier3(reason, _rank)
-      # Set volume
-      volume = tier_config(3)['volume'] || 80
-      set_volume(volume)
-
-      display_notification(
-        message: reason,
-        title: '⚠️ HERR KOMMANDANT',
-        subtitle: 'FINAL WARNING',
-        sound: 'Sosumi'
-      )
-      play_sound(:sosumi)
-
-      # Open intervention video
-      open_url(INTERVENTION_VIDEO) if tier_config(3)['video']
-
-      return unless voice_enabled?
-
-      line = GERMAN_TIER3_LINES.sample
-      speak(line)
+    # Tier 3 (10 min): NO sound, NO voice — just open video fullscreen
+    def notify_tier3
+      open_video_fullscreen(INTERVENTION_VIDEO)
     end
 
-    def notify_tier4(reason, _rank)
-      # Volume to max
-      set_volume(100)
-
+    # Tier 4 (25 min): Tink → 3 German lines → English translations → YouTube full volume in 4 quadrant windows
+    def notify_tier4(reason)
       display_notification(
         message: reason,
         title: '🚨 HERR KOMMANDANT 🚨',
         subtitle: 'NUCLEAR OPTION ACTIVATED',
-        sound: 'Sosumi'
+        sound: 'Tink'
       )
+      play_sound(:tink)
+      set_volume(100)
 
-      # Multiple system sounds
-      play_sound(:basso)
-      play_sound(:funk)
-      play_sound(:submarine)
+      if voice_enabled?
+        pairs = LINES.sample(LINES_PER_TIER[4])
+        speak_pairs(pairs)
+      end
 
-      # Open video 3 times with different timestamps
-      open_url("#{INTERVENTION_VIDEO}&t=0")
-      open_url("#{INTERVENTION_VIDEO}&t=30")
-      open_url("#{INTERVENTION_VIDEO}&t=60")
+      open_video_quadrants(INTERVENTION_VIDEO)
+    end
 
-      # Two TTS phrases simultaneously (backgrounded)
-      return unless voice_enabled?
+    # --- Voice Helpers ---
 
-      lines = GERMAN_TIER4_LINES.sample(2)
-      speak_background(lines[0]) if lines[0]
-      speak_background(lines[1]) if lines[1]
+    # Speak German+English pairs sequentially: German first (Anna), then English (Daniel/Samantha)
+    def speak_pairs(pairs)
+      pairs.each do |pair|
+        speak_german(pair[:de])
+        speak_english(pair[:en])
+      end
+    end
+
+    # Speak text with German voice (Anna by default)
+    def speak_german(text)
+      voice = tts_voice_german
+      speed = tts_speed
+      escaped = escape_shell(text)
+      safe_system("say -v '#{voice}' -r #{speed} '#{escaped}'")
+    end
+
+    # Speak text with English voice (Daniel by default — British accent)
+    def speak_english(text)
+      voice = tts_voice_english
+      speed = tts_speed
+      escaped = escape_shell(text)
+      safe_system("say -v '#{voice}' -r #{speed} '#{escaped}'")
     end
 
     # --- macOS Integration Helpers ---
@@ -204,22 +214,6 @@ module Kommandant
       safe_system("afplay '#{path}' &")
     end
 
-    # Speak text using macOS `say` command with configured voice and speed.
-    def speak(text)
-      voice = tts_voice
-      speed = tts_speed
-      escaped = escape_shell(text)
-      safe_system("say -v '#{voice}' -r #{speed} '#{escaped}'")
-    end
-
-    # Speak text in the background (non-blocking).
-    def speak_background(text)
-      voice = tts_voice
-      speed = tts_speed
-      escaped = escape_shell(text)
-      safe_system("say -v '#{voice}' -r #{speed} '#{escaped}' &")
-    end
-
     # Set macOS output volume (0-100).
     def set_volume(level)
       level = [[level.to_i, 0].max, 100].min
@@ -231,12 +225,57 @@ module Kommandant
       safe_system("open '#{escape_shell(url)}'")
     end
 
+    # Open a video URL in fullscreen using AppleScript to enter fullscreen mode.
+    def open_video_fullscreen(url)
+      open_url(url)
+      # Give browser a moment to open the tab, then send Cmd+Shift+F for YouTube fullscreen
+      sleep 2
+      safe_system('osascript -e \'tell application "System Events" to keystroke "f"\'')
+    end
+
+    # Open video in 4 browser windows, one in each screen quadrant.
+    # Uses AppleScript to position Chrome/Safari windows.
+    def open_video_quadrants(url)
+      # Get screen dimensions
+      script = <<~APPLESCRIPT
+        tell application "Finder"
+          set screenBounds to bounds of window of desktop
+          set screenWidth to item 3 of screenBounds
+          set screenHeight to item 4 of screenBounds
+        end tell
+
+        set halfW to screenWidth div 2
+        set halfH to screenHeight div 2
+
+        tell application "Google Chrome"
+          activate
+          set win1 to make new window
+          set URL of active tab of win1 to "#{escape_applescript(url)}"
+          set bounds of win1 to {0, 0, halfW, halfH}
+
+          set win2 to make new window
+          set URL of active tab of win2 to "#{escape_applescript(url)}"
+          set bounds of win2 to {halfW, 0, screenWidth, halfH}
+
+          set win3 to make new window
+          set URL of active tab of win3 to "#{escape_applescript(url)}"
+          set bounds of win3 to {0, halfH, halfW, screenHeight}
+
+          set win4 to make new window
+          set URL of active tab of win4 to "#{escape_applescript(url)}"
+          set bounds of win4 to {halfW, halfH, screenWidth, screenHeight}
+        end tell
+      APPLESCRIPT
+
+      safe_system("osascript -e '#{escape_shell(script)}'")
+    end
+
     # --- Config Helpers ---
 
     # Check if a tier is enabled in config.
     def tier_enabled?(tier_num)
       tc = tier_config(tier_num)
-      tc.fetch('enabled', false)
+      tc.fetch('enabled', tier_num <= 3)
     end
 
     # Get the config hash for a specific tier.
@@ -248,13 +287,19 @@ module Kommandant
     # Check if voice is enabled globally.
     def voice_enabled?
       voice_config = @config.fetch('voice', {})
-      voice_config.fetch('enabled', false)
+      voice_config.fetch('enabled', true)
     end
 
-    # Get the configured TTS voice name.
-    def tts_voice
+    # German TTS voice (default: Anna)
+    def tts_voice_german
       voice_config = @config.fetch('voice', {})
       voice_config.fetch('tts_voice', 'Anna')
+    end
+
+    # English TTS voice (default: Daniel — British accent)
+    def tts_voice_english
+      voice_config = @config.fetch('voice', {})
+      voice_config.fetch('tts_voice_english', 'Daniel')
     end
 
     # Get the configured TTS speed.
