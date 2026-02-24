@@ -12,4 +12,6 @@ Gemfile.lock
 # User config — never commit
 kommandant.yml
 .kommandant.yml
+
+# IDE
 .idea/
