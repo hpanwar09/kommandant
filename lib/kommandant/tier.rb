@@ -7,10 +7,10 @@ module Kommandant
   module Tier
     TIERS = {
       0 => { name: "Reconnaissance",    description: "Silent monitoring",         color: :white }.freeze,
-      1 => { name: "Gentle Nudge",      description: "Notification + soft sound", color: :yellow }.freeze,
-      2 => { name: "Stern Warning",     description: "German voice + loud sound", color: :bright_yellow }.freeze,
-      3 => { name: "Full Intervention", description: "Video + volume override",   color: :red }.freeze,
-      4 => { name: "Nuclear",           description: "Full chaos mode",           color: :bright_red }.freeze
+      1 => { name: "Gentle Nudge",      description: "Tink + 1 German/English line",            color: :yellow }.freeze,
+      2 => { name: "Stern Warning",     description: "Tink + 2 German/English lines",           color: :bright_yellow }.freeze,
+      3 => { name: "Full Intervention", description: "Silent — opens video fullscreen",          color: :red }.freeze,
+      4 => { name: "Nuclear",           description: "Tink + 3 lines + 4 quadrant video walls", color: :bright_red }.freeze
     }.freeze
 
     # Default thresholds (seconds) used when config is unavailable
