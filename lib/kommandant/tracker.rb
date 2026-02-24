@@ -54,37 +54,10 @@ module Kommandant
     def record_slacking!(app:, url: nil)
       @data['slack_seconds_today'] += poll_seconds
       @data['total_slack_seconds'] += poll_seconds
-
-      # Reset focus streak
       @data['streak_seconds'] = 0
 
-      # Track the current slack session for worst-offense detection
-      if @current_slack_app == app
-        # Continue existing slack session
-        @current_slack_duration = (@current_slack_duration || 0) + poll_seconds
-      else
-        # Close previous session, start new one
-        close_slack_session!
-        @current_slack_app = app
-        @current_slack_url = url
-        @current_slack_start = Time.now
-        @current_slack_duration = poll_seconds
-      end
-
-      # Record violation
-      existing = @data['violations_today'].find { |v| v['app'] == app }
-      if existing
-        existing['count'] += 1
-        existing['duration_seconds'] += poll_seconds
-      else
-        @data['violations_today'] << {
-          'app' => app,
-          'url' => url,
-          'count' => 1,
-          'duration_seconds' => poll_seconds
-        }
-      end
-
+      track_slack_session(app, url)
+      record_violation(app, url)
       tick!
     end
 
@@ -213,6 +186,31 @@ module Kommandant
       File.write(STATS_PATH, JSON.pretty_generate(@data))
     rescue Errno::EACCES => e
       warn "[Kommandant::Tracker] Could not write #{STATS_PATH}: #{e.message}"
+    end
+
+    def track_slack_session(app, url)
+      if @current_slack_app == app
+        @current_slack_duration = (@current_slack_duration || 0) + poll_seconds
+      else
+        close_slack_session!
+        @current_slack_app = app
+        @current_slack_url = url
+        @current_slack_start = Time.now
+        @current_slack_duration = poll_seconds
+      end
+    end
+
+    def record_violation(app, url)
+      existing = @data['violations_today'].find { |v| v['app'] == app }
+      if existing
+        existing['count'] += 1
+        existing['duration_seconds'] += poll_seconds
+      else
+        @data['violations_today'] << {
+          'app' => app, 'url' => url,
+          'count' => 1, 'duration_seconds' => poll_seconds
+        }
+      end
     end
 
     private

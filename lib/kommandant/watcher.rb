@@ -4,7 +4,7 @@ require 'fileutils'
 
 module Kommandant
   # The main daemon loop that ties detection, classification, notification,
-  # tracking, and display together. Runs in the foreground as a patrol loop.
+  # tracking, and notification together. Runs in the foreground as a patrol loop.
   class Watcher
     PID_PATH = File.expand_path('~/.kommandant.pid').freeze
 
@@ -27,7 +27,7 @@ module Kommandant
       setup_signal_handlers!
       initialize_components!
 
-      Display.banner
+      puts pastel.red("\n[Kommandant] Herr Kommandant is watching. Jawohl!\n")
       @running = true
 
       puts "[Kommandant] Patrol started. Poll interval: #{poll_interval}s"
@@ -45,9 +45,8 @@ module Kommandant
       if @tracker
         @tracker.save!
         puts
-        Display.tier_message(tier: 0, reason: '', rank: '', streak: 0) # no-op, just for clarity
       end
-      puts pastel.yellow("Herr Kommandant dismissed. At ease, soldier. #{Display::FACE_SALUTE}")
+      puts pastel.yellow('Herr Kommandant dismissed. At ease, soldier.')
     end
 
     # Boolean — is the watcher currently running?
@@ -86,45 +85,36 @@ module Kommandant
 
     def process_tick!
       @tick_count += 1
-
-      # Take detector snapshot
       snapshot = @detector.snapshot
-
-      # Classify the snapshot
       classification = @classifier.classify(snapshot)
-      status = classification[:status]
 
-      case status
-      when :meeting, :away
-        @tracker.record_idle!
-        reset_slack_accumulator!
-      when :working
-        handle_working!(classification)
-      when :slacking
-        handle_slacking!(classification, snapshot)
-      when :neutral
-        @tracker.record_idle!
-        # Neutral — don't reset slack accumulator, but don't add to it either
-      end
-
-      # Midnight rollover check
+      dispatch_status(classification, snapshot)
       check_midnight_rollover!
     rescue StandardError => e
       warn "[Kommandant] Tick error: #{e.message}"
+    end
+
+    def dispatch_status(classification, snapshot)
+      case classification[:status]
+      when :meeting, :away
+        @tracker.record_idle!
+        reset_slack_accumulator!
+      when :working then handle_working!(classification)
+      when :slacking then handle_slacking!(classification, snapshot)
+      when :neutral then @tracker.record_idle!
+      end
     end
 
     def handle_working!(_classification)
       @tracker.record_working!
 
       # Check for promotion
-      if @tracker.check_promotion!
-        puts pastel.green("#{Display::FACE_SALUTE} PROMOTED to #{@tracker.rank}! Herr Kommandant approves!")
-      end
+      puts pastel.green("PROMOTED to #{@tracker.rank}! Herr Kommandant approves!") if @tracker.check_promotion!
 
       # If was slacking, praise return to work
       return unless @was_slacking
 
-      puts pastel.green("#{Display::FACE_SALUTE} Good. Back to work. Herr Kommandant is watching.")
+      puts pastel.green('Good. Back to work. Herr Kommandant is watching.')
       @was_slacking = false
       reset_slack_accumulator!
     end
@@ -132,41 +122,30 @@ module Kommandant
     def handle_slacking!(classification, snapshot)
       app = classification[:app] || snapshot[:active_app] || 'unknown'
       url = classification[:url] || snapshot[:active_url]
-      reason = build_reason(app, url)
 
       @tracker.record_slacking!(app: app, url: url)
       @accumulated_slack_seconds += poll_interval
       @was_slacking = true
 
-      # Determine current tier based on accumulated slack
-      current_tier = Tier.for_seconds(@accumulated_slack_seconds, Config)
+      escalate_if_needed(app, url)
+    end
 
-      # Only escalate — don't repeat same tier notification
+    def escalate_if_needed(app, url)
+      current_tier = Tier.for_seconds(@accumulated_slack_seconds, Config)
       return unless current_tier > @last_notified_tier
 
-      # Trigger notification
-      @notifier.notify(
-        tier: current_tier,
-        reason: reason,
-        rank: @tracker.rank,
-        streak: @tracker.streak_minutes
-      )
-
-      # Terminal display
-      Display.tier_message(
-        tier: current_tier,
-        reason: reason,
-        rank: @tracker.rank,
-        streak: @tracker.streak_minutes
-      )
-
-      # Demote on tier 3+
-      if current_tier >= 3
-        @tracker.demote!
-        puts pastel.red("#{Display::FACE_SKULL} DEMOTED to #{@tracker.rank}!")
-      end
-
+      trigger_tier_notification(current_tier, app, url)
       @last_notified_tier = current_tier
+    end
+
+    def trigger_tier_notification(tier, app, url)
+      reason = build_reason(app, url)
+      @notifier.notify(tier: tier, reason: reason, rank: @tracker.rank, streak: @tracker.streak_minutes)
+
+      return unless tier >= 3
+
+      @tracker.demote!
+      puts pastel.red("DEMOTED to #{@tracker.rank}!")
     end
 
     def build_reason(app, url)
@@ -209,7 +188,7 @@ module Kommandant
       today = Time.now.wday
 
       if start_day <= end_day
-        today >= start_day && today <= end_day
+        today.between?(start_day, end_day)
       else
         today >= start_day || today <= end_day
       end
@@ -223,9 +202,9 @@ module Kommandant
       end_h, end_m = parts[1].split(':').map(&:to_i)
 
       now = Time.now
-      now_minutes = now.hour * 60 + now.min
-      start_minutes = start_h * 60 + (start_m || 0)
-      end_minutes = end_h * 60 + (end_m || 0)
+      now_minutes = (now.hour * 60) + now.min
+      start_minutes = (start_h * 60) + (start_m || 0)
+      end_minutes = (end_h * 60) + (end_m || 0)
 
       now_minutes >= start_minutes && now_minutes < end_minutes
     end
@@ -242,7 +221,7 @@ module Kommandant
       return unless now.strftime('%Y-%m-%d') != @last_midnight_check.strftime('%Y-%m-%d')
 
       puts pastel.cyan('[Kommandant] Midnight! Generating daily report...')
-      Display.report(@tracker.daily_stats)
+      puts pastel.cyan("[Kommandant] Daily stats: #{@tracker.daily_stats.inspect}")
       @tracker.reset_daily!
       reset_slack_accumulator!
       @last_midnight_check = now
@@ -281,7 +260,7 @@ module Kommandant
     end
 
     def delete_pid!
-      File.delete(PID_PATH) if File.exist?(PID_PATH)
+      FileUtils.rm_f(PID_PATH)
     rescue Errno::ENOENT, Errno::EACCES
       # Ignore
     end

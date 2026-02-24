@@ -39,22 +39,18 @@ module Kommandant
       pid_file = File.expand_path('~/.kommandant.pid')
       patrol_active = File.exist?(pid_file) && process_alive?(File.read(pid_file).strip.to_i)
 
-      Display.status(
-        rank: tracker.rank,
-        rank_emoji: tracker.rank_emoji,
-        streak_minutes: tracker.streak_minutes,
-        patrol_active: patrol_active,
-        tier: 0,
-        total_focus: tracker.focus_minutes_today,
-        total_slack: tracker.slack_minutes_today
-      )
+      puts "Rank: #{tracker.rank} #{tracker.rank_emoji}"
+      puts "Streak: #{tracker.streak_minutes} min"
+      puts "Patrol: #{patrol_active ? 'ACTIVE' : 'INACTIVE'}"
+      puts "Focus today: #{tracker.focus_minutes_today} min"
+      puts "Slack today: #{tracker.slack_minutes_today} min"
     end
 
     desc 'report', "Show today's Tagesbericht"
     def report
       Config.load
       tracker = Tracker.new
-      Display.report(tracker.daily_stats)
+      puts YAML.dump(tracker.daily_stats)
     end
 
     desc 'config SUBCOMMAND', 'Manage configuration'
@@ -64,34 +60,13 @@ module Kommandant
       Config.load
 
       case subcommand
-      when 'list'
-        display_config
-      when 'set'
-        key = options[:key] || shift_args(1)
-        value = options[:value] || shift_args(2)
-        abort 'Usage: kommandant config set --key KEY --value VALUE' unless key && value
-        Config.set(key, coerce_value(value))
-        puts "Set #{key} = #{value}"
-      when 'add'
-        key = options[:key] || shift_args(1)
-        value = options[:value] || shift_args(2)
-        abort 'Usage: kommandant config add --key KEY --value VALUE' unless key && value
-        Config.add(key, value)
-        puts "Added '#{value}' to #{key}"
-      when 'remove'
-        key = options[:key] || shift_args(1)
-        value = options[:value] || shift_args(2)
-        abort 'Usage: kommandant config remove --key KEY --value VALUE' unless key && value
-        Config.remove(key, value)
-        puts "Removed '#{value}' from #{key}"
-      when 'reset'
-        Config.reset!
-        puts 'Configuration reset to defaults.'
-      when 'path'
-        puts Config::CONFIG_PATH
-      else
-        puts "Unknown subcommand: #{subcommand}"
-        puts 'Available: list, set, add, remove, reset, path'
+      when 'list'   then display_config
+      when 'set'    then config_set
+      when 'add'    then config_add
+      when 'remove' then config_remove
+      when 'reset'  then config_reset
+      when 'path'   then puts Config::CONFIG_PATH
+      else config_unknown(subcommand)
       end
     end
 
@@ -101,7 +76,8 @@ module Kommandant
       suppress_until = Time.now + seconds
       File.write(File.expand_path('~/.kommandant_suppress'), suppress_until.iso8601)
       minutes = (seconds / 60.0).ceil
-      puts "Patrol suppressed for #{minutes} minutes. Herr Kommandant grants you leave until #{suppress_until.strftime('%H:%M')}."
+      puts "Patrol suppressed for #{minutes} minutes. " \
+           "Herr Kommandant grants you leave until #{suppress_until.strftime('%H:%M')}."
     end
 
     desc 'version', 'Show version'
@@ -133,6 +109,41 @@ module Kommandant
     def display_config
       require 'yaml'
       puts YAML.dump(Config.to_h)
+    end
+
+    def config_set
+      key, value = require_key_value!('set')
+      Config.set(key, coerce_value(value))
+      puts "Set #{key} = #{value}"
+    end
+
+    def config_add
+      key, value = require_key_value!('add')
+      Config.add(key, value)
+      puts "Added '#{value}' to #{key}"
+    end
+
+    def config_remove
+      key, value = require_key_value!('remove')
+      Config.remove(key, value)
+      puts "Removed '#{value}' from #{key}"
+    end
+
+    def config_reset
+      Config.reset!
+      puts 'Configuration reset to defaults.'
+    end
+
+    def config_unknown(subcommand)
+      puts "Unknown subcommand: #{subcommand}"
+      puts 'Available: list, set, add, remove, reset, path'
+    end
+
+    def require_key_value!(action)
+      key = options[:key] || shift_args(1)
+      value = options[:value] || shift_args(2)
+      abort "Usage: kommandant config #{action} --key KEY --value VALUE" unless key && value
+      [key, value]
     end
 
     def coerce_value(val)

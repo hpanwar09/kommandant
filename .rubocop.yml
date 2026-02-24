@@ -1,0 +1,78 @@
+inherit_mode:
+  merge:
+    - Exclude
+
+AllCops:
+  NewCops: enable
+  TargetRubyVersion: 3.2
+  SuggestExtensions: false
+  Exclude:
+    - bin/*
+    - vendor/**/*
+    - tmp/**/*
+
+Bundler/OrderedGems:
+  Enabled: false
+
+Layout/SpaceBeforeBrackets:
+  Enabled: false
+
+Lint/EmptyBlock:
+  Enabled: true
+  AllowEmptyLambdas: true
+
+Lint/MissingSuper:
+  Enabled: false
+
+Naming/BlockForwarding:
+  Enabled: false
+
+Style/ArgumentsForwarding:
+  Enabled: false
+
+Style/Documentation:
+  Enabled: false
+
+Style/HashSyntax:
+  EnforcedShorthandSyntax: either
+
+Style/RedundantConstantBase:
+  Enabled: false
+
+Gemspec/DevelopmentDependencies:
+  Enabled: false
+
+Metrics/ClassLength:
+  Exclude:
+    - lib/kommandant/classifier.rb
+    - lib/kommandant/cli.rb
+    - lib/kommandant/config.rb
+    - lib/kommandant/detector.rb
+    - lib/kommandant/notifier.rb
+    - lib/kommandant/tracker.rb
+    - lib/kommandant/watcher.rb
+
+Metrics/ModuleLength:
+  Exclude:
+    - lib/kommandant/config.rb
+
+Metrics/MethodLength:
+  Max: 15
+
+Metrics/AbcSize:
+  Max: 25
+
+Metrics/CyclomaticComplexity:
+  Max: 10
+
+Metrics/PerceivedComplexity:
+  Max: 10
+
+Metrics/ParameterLists:
+  Max: 6
+
+Naming/AccessorMethodName:
+  Enabled: false
+
+Naming/PredicateMethod:
+  Enabled: false

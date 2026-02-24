@@ -6,15 +6,17 @@ module Kommandant
   # Threshold seconds come from config; enabled/disabled flags are respected.
   module Tier
     TIERS = {
-      0 => { name: "Reconnaissance",    description: "Silent monitoring",         color: :white }.freeze,
-      1 => { name: "Gentle Nudge",      description: "Notification + soft sound", color: :yellow }.freeze,
-      2 => { name: "Stern Warning",     description: "German voice + loud sound", color: :bright_yellow }.freeze,
-      3 => { name: "Full Intervention", description: "Video + volume override",   color: :red }.freeze,
-      4 => { name: "Nuclear",           description: "Full chaos mode",           color: :bright_red }.freeze
+      0 => { name: 'Reconnaissance',    description: 'Silent monitoring', color: :white }.freeze,
+      1 => { name: 'Gentle Nudge',      description: 'Tink + 1 German/English line', color: :yellow }.freeze,
+      2 => { name: 'Stern Warning',     description: 'Tink + 2 German/English lines',
+             color: :bright_yellow }.freeze,
+      3 => { name: 'Full Intervention', description: 'Silent — opens video fullscreen', color: :red }.freeze,
+      4 => { name: 'Nuclear',           description: 'Tink + 3 lines + 4 quadrant video walls',
+             color: :bright_red }.freeze
     }.freeze
 
     # Default thresholds (seconds) used when config is unavailable
-    DEFAULT_THRESHOLDS = { 1 => 60, 2 => 180, 3 => 300, 4 => 900 }.freeze
+    DEFAULT_THRESHOLDS = { 1 => 60, 2 => 300, 3 => 600, 4 => 1500 }.freeze
 
     class << self
       # Determine the appropriate tier based on accumulated slack seconds.
@@ -56,11 +58,11 @@ module Kommandant
       def enabled?(tier_number, config)
         return true if tier_number.zero?
 
-        value = fetch_tier_field(tier_number, "enabled", config)
+        value = fetch_tier_field(tier_number, 'enabled', config)
 
         # Treat nil as enabled by default for tiers 1–2, disabled for 3–4
         if value.nil?
-          tier_number <= 2
+          tier_number <= 3
         else
           !!value
         end
@@ -88,9 +90,7 @@ module Kommandant
           entry = tier_info.dup
           entry[:number] = num
           entry[:enabled] = config ? enabled?(num, config) : true
-          if config && num.positive?
-            entry[:after_seconds] = threshold_for(num, config)
-          end
+          entry[:after_seconds] = threshold_for(num, config) if config && num.positive?
           entry
         end
       end
@@ -103,7 +103,7 @@ module Kommandant
       # @param config [Module]
       # @return [Integer, nil]
       def threshold_for(tier_num, config)
-        value = fetch_tier_field(tier_num, "after", config)
+        value = fetch_tier_field(tier_num, 'after', config)
         return DEFAULT_THRESHOLDS[tier_num] if value.nil?
         return nil unless value.is_a?(Numeric) && value.positive?
 
@@ -120,7 +120,7 @@ module Kommandant
         if config.respond_to?(:get)
           config.get("tiers.#{tier_num}.#{field}")
         elsif config.is_a?(Hash)
-          tier_data = config.dig("tiers", tier_num) || config.dig("tiers", tier_num.to_s)
+          tier_data = config.dig('tiers', tier_num) || config.dig('tiers', tier_num.to_s)
           tier_data && (tier_data[field] || tier_data[field.to_sym])
         end
       rescue StandardError
