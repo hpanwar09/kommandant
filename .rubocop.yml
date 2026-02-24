@@ -1,0 +1,40 @@
+inherit_mode:
+  merge:
+    - Exclude
+
+AllCops:
+  NewCops: enable
+  TargetRubyVersion: 3.2
+  SuggestExtensions: false
+  Exclude:
+    - bin/*
+    - vendor/**/*
+    - tmp/**/*
+
+Bundler/OrderedGems:
+  Enabled: false
+
+Layout/SpaceBeforeBrackets:
+  Enabled: false
+
+Lint/EmptyBlock:
+  Enabled: true
+  AllowEmptyLambdas: true
+
+Lint/MissingSuper:
+  Enabled: false
+
+Naming/BlockForwarding:
+  Enabled: false
+
+Style/ArgumentsForwarding:
+  Enabled: false
+
+Style/Documentation:
+  Enabled: false
+
+Style/HashSyntax:
+  EnforcedShorthandSyntax: either
+
+Style/RedundantConstantBase:
+  Enabled: false

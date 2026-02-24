@@ -115,7 +115,7 @@ module Kommandant
         subtitle: 'Gentle Reminder',
         sound: 'Tink'
       )
-      play_sound(:tink)
+      play_sound(:submarine)
 
       return unless voice_enabled?
 
@@ -131,7 +131,7 @@ module Kommandant
         subtitle: 'Stern Warning',
         sound: 'Tink'
       )
-      play_sound(:tink)
+      play_sound(:submarine)
 
       return unless voice_enabled?
 
@@ -152,7 +152,7 @@ module Kommandant
         subtitle: 'NUCLEAR OPTION ACTIVATED',
         sound: 'Tink'
       )
-      play_sound(:tink)
+      play_sound(:submarine)
       set_volume(100)
 
       if voice_enabled?
