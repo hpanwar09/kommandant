@@ -66,69 +66,85 @@ module Kommandant
     def evaluate(app, domain, _url, idle, locked, meeting)
       idle_threshold = dig_config('detection', 'idle_threshold') || 60
 
-      # Priority 1: Screen locked → away
-      return { status: :away, slack_score: 0, reason: 'Screen is locked' } if locked
+      check_locked(locked) ||
+        check_meeting(meeting, app) ||
+        check_blocked_url(domain, idle, idle_threshold) ||
+        check_allowed_url(domain) ||
+        check_work_app(app) ||
+        check_blocked_app(app, idle, idle_threshold) ||
+        check_idle(idle, idle_threshold) ||
+        { status: :neutral, slack_score: 0, reason: 'No violation detected' }
+    end
 
-      # Priority 2: In a meeting → meeting (auto-suppress)
-      return { status: :meeting, slack_score: 0, reason: "In a meeting (#{app})" } if meeting
+    def check_locked(locked)
+      return unless locked
 
-      # Priority 3: Check for blocked URL in browser
-      if domain && url_blocked?(domain)
-        score = idle > idle_threshold ? 4 : 3
-        return {
-          status: :slacking,
-          slack_score: score,
-          reason: format_reason("On #{domain}", @accumulated_slack_seconds)
-        }
-      end
+      { status: :away, slack_score: 0, reason: 'Screen is locked' }
+    end
 
-      # Priority 4: Check for allowed URL
-      return { status: :working, slack_score: 0, reason: "On #{domain}" } if domain && url_allowed?(domain)
+    def check_meeting(meeting, app)
+      return unless meeting
 
-      # Priority 5: Check if frontmost app is a work app
-      return { status: :working, slack_score: 0, reason: "Using #{app}" } if work_app?(app)
+      { status: :meeting, slack_score: 0, reason: "In a meeting (#{app})" }
+    end
 
-      # Priority 6: Check if frontmost app is a blocked app
-      if blocked_app?(app)
-        score = idle > idle_threshold ? 4 : 2
-        return {
-          status: :slacking,
-          slack_score: score,
-          reason: format_reason("Using #{app}", @accumulated_slack_seconds)
-        }
-      end
+    def check_blocked_url(domain, idle, idle_threshold)
+      return unless domain && url_blocked?(domain)
 
-      # Priority 7: Idle with no slacker signals → away
-      return { status: :away, slack_score: 0, reason: "Idle for #{format_duration(idle)}" } if idle > idle_threshold
+      score = idle > idle_threshold ? 4 : 3
+      { status: :slacking, slack_score: score, reason: format_reason("On #{domain}", @accumulated_slack_seconds) }
+    end
 
-      # Default: neutral
-      { status: :neutral, slack_score: 0, reason: 'No violation detected' }
+    def check_allowed_url(domain)
+      return unless domain && url_allowed?(domain)
+
+      { status: :working, slack_score: 0, reason: "On #{domain}" }
+    end
+
+    def check_work_app(app)
+      return unless work_app?(app)
+
+      { status: :working, slack_score: 0, reason: "Using #{app}" }
+    end
+
+    def check_blocked_app(app, idle, idle_threshold)
+      return unless blocked_app?(app)
+
+      score = idle > idle_threshold ? 4 : 2
+      { status: :slacking, slack_score: score, reason: format_reason("Using #{app}", @accumulated_slack_seconds) }
+    end
+
+    def check_idle(idle, idle_threshold)
+      return unless idle > idle_threshold
+
+      { status: :away, slack_score: 0, reason: "Idle for #{format_duration(idle)}" }
     end
 
     # Update accumulated slack tracking based on current status.
     def update_accumulation(status)
-      now = Time.now
-
       case status
-      when :slacking
-        if @last_status == :slacking && @slack_started_at
-          @accumulated_slack_seconds = (now - @slack_started_at).to_i
-        else
-          # Just started slacking
-          @slack_started_at = now
-          @accumulated_slack_seconds = 0
-        end
-      when :working
-        # User got back to work — reset
-        if @last_status == :slacking
-          @accumulated_slack_seconds = 0
-          @slack_started_at = nil
-        end
+      when :slacking then accumulate_slack
+      when :working then reset_if_slacking
       end
-      # :away, :meeting, :neutral don't reset the accumulator —
-      # if they were slacking before and just went idle, keep the count
-
+      # :away, :meeting, :neutral don't reset — keep count if they were slacking before
       @last_status = status
+    end
+
+    def accumulate_slack
+      now = Time.now
+      if @last_status == :slacking && @slack_started_at
+        @accumulated_slack_seconds = (now - @slack_started_at).to_i
+      else
+        @slack_started_at = now
+        @accumulated_slack_seconds = 0
+      end
+    end
+
+    def reset_if_slacking
+      return unless @last_status == :slacking
+
+      @accumulated_slack_seconds = 0
+      @slack_started_at = nil
     end
 
     # Check if app name matches any work app (case-insensitive).

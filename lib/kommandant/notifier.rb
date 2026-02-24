@@ -83,24 +83,11 @@ module Kommandant
     # @param streak_minutes [Integer] how many minutes of focused work
     def praise(rank: nil, streak_minutes: 0) # rubocop:disable Lint/UnusedMethodArgument
       pair = PRAISE_LINES.sample
-      message = if streak_minutes.positive?
-                  "#{pair[:de]} (#{streak_minutes} min focused)"
-                else
-                  pair[:de]
-                end
+      message = praise_message(pair, streak_minutes)
 
-      display_notification(
-        message: message,
-        title: '🎖️ Herr Kommandant',
-        subtitle: 'Impressive, Soldat!',
-        sound: 'Hero'
-      )
+      display_praise_notification(message)
       play_sound(:hero)
-
-      return unless voice_enabled?
-
-      speak_german(pair[:de])
-      speak_english(pair[:en])
+      speak_pair(pair) if voice_enabled?
     end
 
     private
@@ -173,6 +160,11 @@ module Kommandant
       end
     end
 
+    def speak_pair(pair)
+      speak_german(pair[:de])
+      speak_english(pair[:en])
+    end
+
     # Speak text with German voice (Anna by default)
     def speak_german(text)
       voice = tts_voice_german
@@ -236,8 +228,13 @@ module Kommandant
     # Open video in 4 browser windows, one in each screen quadrant.
     # Uses AppleScript to position Chrome/Safari windows.
     def open_video_quadrants(url)
-      # Get screen dimensions
-      script = <<~APPLESCRIPT
+      script = build_quadrant_script(url)
+      safe_system("osascript -e '#{escape_shell(script)}'")
+    end
+
+    def build_quadrant_script(url)
+      escaped_url = escape_applescript(url)
+      <<~APPLESCRIPT
         tell application "Finder"
           set screenBounds to bounds of window of desktop
           set screenWidth to item 3 of screenBounds
@@ -249,25 +246,38 @@ module Kommandant
 
         tell application "Google Chrome"
           activate
-          set win1 to make new window
-          set URL of active tab of win1 to "#{escape_applescript(url)}"
-          set bounds of win1 to {0, 0, halfW, halfH}
-
-          set win2 to make new window
-          set URL of active tab of win2 to "#{escape_applescript(url)}"
-          set bounds of win2 to {halfW, 0, screenWidth, halfH}
-
-          set win3 to make new window
-          set URL of active tab of win3 to "#{escape_applescript(url)}"
-          set bounds of win3 to {0, halfH, halfW, screenHeight}
-
-          set win4 to make new window
-          set URL of active tab of win4 to "#{escape_applescript(url)}"
-          set bounds of win4 to {halfW, halfH, screenWidth, screenHeight}
+          #{quadrant_window_script(escaped_url)}
         end tell
       APPLESCRIPT
+    end
 
-      safe_system("osascript -e '#{escape_shell(script)}'")
+    def quadrant_window_script(url)
+      positions = [
+        '{0, 0, halfW, halfH}',
+        '{halfW, 0, screenWidth, halfH}',
+        '{0, halfH, halfW, screenHeight}',
+        '{halfW, halfH, screenWidth, screenHeight}'
+      ]
+      positions.map.with_index(1) do |bounds, i|
+        [
+          "set win#{i} to make new window",
+          "set URL of active tab of win#{i} to \"#{url}\"",
+          "set bounds of win#{i} to #{bounds}"
+        ].join("\n          ")
+      end.join("\n          ")
+    end
+
+    def praise_message(pair, streak_minutes)
+      streak_minutes.positive? ? "#{pair[:de]} (#{streak_minutes} min focused)" : pair[:de]
+    end
+
+    def display_praise_notification(message)
+      display_notification(
+        message: message,
+        title: '🎖️ Herr Kommandant',
+        subtitle: 'Impressive, Soldat!',
+        sound: 'Hero'
+      )
     end
 
     # --- Config Helpers ---
