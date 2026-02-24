@@ -39,22 +39,18 @@ module Kommandant
       pid_file = File.expand_path('~/.kommandant.pid')
       patrol_active = File.exist?(pid_file) && process_alive?(File.read(pid_file).strip.to_i)
 
-      Display.status(
-        rank: tracker.rank,
-        rank_emoji: tracker.rank_emoji,
-        streak_minutes: tracker.streak_minutes,
-        patrol_active: patrol_active,
-        tier: 0,
-        total_focus: tracker.focus_minutes_today,
-        total_slack: tracker.slack_minutes_today
-      )
+      puts "Rank: #{tracker.rank} #{tracker.rank_emoji}"
+      puts "Streak: #{tracker.streak_minutes} min"
+      puts "Patrol: #{patrol_active ? 'ACTIVE' : 'INACTIVE'}"
+      puts "Focus today: #{tracker.focus_minutes_today} min"
+      puts "Slack today: #{tracker.slack_minutes_today} min"
     end
 
     desc 'report', "Show today's Tagesbericht"
     def report
       Config.load
       tracker = Tracker.new
-      Display.report(tracker.daily_stats)
+      puts YAML.dump(tracker.daily_stats)
     end
 
     desc 'config SUBCOMMAND', 'Manage configuration'

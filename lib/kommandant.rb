@@ -7,7 +7,6 @@ require_relative "kommandant/classifier"
 require_relative "kommandant/tier"
 require_relative "kommandant/notifier"
 require_relative "kommandant/tracker"
-require_relative "kommandant/display"
 require_relative "kommandant/watcher"
 
 module Kommandant

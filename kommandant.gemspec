@@ -28,9 +28,6 @@ Gem::Specification.new do |spec|
   spec.executables = ['kommandant']
   spec.require_paths = ['lib']
 
-  spec.add_dependency 'artii', '~> 2.1'
   spec.add_dependency 'pastel', '~> 0.8'
   spec.add_dependency 'thor', '~> 1.3'
-  spec.add_dependency 'tty-box', '~> 0.7'
-  spec.add_dependency 'tty-cursor', '~> 0.7'
 end

@@ -4,7 +4,7 @@ require 'fileutils'
 
 module Kommandant
   # The main daemon loop that ties detection, classification, notification,
-  # tracking, and display together. Runs in the foreground as a patrol loop.
+  # tracking, and notification together. Runs in the foreground as a patrol loop.
   class Watcher
     PID_PATH = File.expand_path('~/.kommandant.pid').freeze
 
@@ -27,7 +27,7 @@ module Kommandant
       setup_signal_handlers!
       initialize_components!
 
-      Display.banner
+      puts pastel.red("\n[Kommandant] Herr Kommandant is watching. Jawohl!\n")
       @running = true
 
       puts "[Kommandant] Patrol started. Poll interval: #{poll_interval}s"
@@ -45,9 +45,8 @@ module Kommandant
       if @tracker
         @tracker.save!
         puts
-        Display.tier_message(tier: 0, reason: '', rank: '', streak: 0) # no-op, just for clarity
       end
-      puts pastel.yellow("Herr Kommandant dismissed. At ease, soldier. #{Display::FACE_SALUTE}")
+      puts pastel.yellow('Herr Kommandant dismissed. At ease, soldier.')
     end
 
     # Boolean — is the watcher currently running?
@@ -118,13 +117,13 @@ module Kommandant
 
       # Check for promotion
       if @tracker.check_promotion!
-        puts pastel.green("#{Display::FACE_SALUTE} PROMOTED to #{@tracker.rank}! Herr Kommandant approves!")
+        puts pastel.green("PROMOTED to #{@tracker.rank}! Herr Kommandant approves!")
       end
 
       # If was slacking, praise return to work
       return unless @was_slacking
 
-      puts pastel.green("#{Display::FACE_SALUTE} Good. Back to work. Herr Kommandant is watching.")
+      puts pastel.green('Good. Back to work. Herr Kommandant is watching.')
       @was_slacking = false
       reset_slack_accumulator!
     end
@@ -152,18 +151,11 @@ module Kommandant
         streak: @tracker.streak_minutes
       )
 
-      # Terminal display
-      Display.tier_message(
-        tier: current_tier,
-        reason: reason,
-        rank: @tracker.rank,
-        streak: @tracker.streak_minutes
-      )
 
       # Demote on tier 3+
       if current_tier >= 3
         @tracker.demote!
-        puts pastel.red("#{Display::FACE_SKULL} DEMOTED to #{@tracker.rank}!")
+        puts pastel.red("DEMOTED to #{@tracker.rank}!")
       end
 
       @last_notified_tier = current_tier
@@ -242,7 +234,7 @@ module Kommandant
       return unless now.strftime('%Y-%m-%d') != @last_midnight_check.strftime('%Y-%m-%d')
 
       puts pastel.cyan('[Kommandant] Midnight! Generating daily report...')
-      Display.report(@tracker.daily_stats)
+      puts pastel.cyan('[Kommandant] Daily stats: ' + @tracker.daily_stats.inspect)
       @tracker.reset_daily!
       reset_slack_accumulator!
       @last_midnight_check = now

@@ -9,25 +9,25 @@ module Kommandant
     # German lines paired with English translations.
     # Each tier picks N pairs (scaling up with severity).
     LINES = [
-      { de: 'Achtung! Was machen Sie da?', en: 'Attention! What are you doing?' },
-      { de: 'Zurück an die Arbeit, sofort!', en: 'Back to work, immediately!' },
-      { de: 'Das ist unakzeptabel!', en: 'This is unacceptable!' },
-      { de: 'Herr Kommandant ist nicht erfreut!', en: 'Herr Kommandant is not pleased!' },
-      { de: 'Sie sind eine Enttäuschung!', en: 'You are a disappointment!' },
-      { de: 'Disziplin! Haben Sie das vergessen?', en: 'Discipline! Have you forgotten that?' },
-      { de: 'Ich beobachte Sie! Arbeiten Sie!', en: 'I am watching you! Get to work!' },
-      { de: 'Schluss mit dem Unsinn!', en: 'Enough with the nonsense!' },
-      { de: 'Das ist Ihre letzte Warnung!', en: 'This is your final warning!' },
-      { de: 'Herr Kommandant verliert die Geduld!', en: 'Herr Kommandant is losing patience!' },
-      { de: 'Sie haben es so gewollt!', en: 'You asked for this!' },
-      { de: 'Die Konsequenzen sind unvermeidlich!', en: 'The consequences are inevitable!' },
-      { de: 'Drei Mal habe ich Sie gewarnt!', en: 'Three times I have warned you!' },
-      { de: 'Jetzt reicht es!', en: 'That is enough!' },
+      { de: 'Achtung! Was machen Sie da?', en: 'Attention... What are you doing.' },
+      { de: 'Zurück an die Arbeit, sofort!', en: 'Back to work. Immediately.' },
+      { de: 'Das ist unakzeptabel!', en: 'This is... unacceptable.' },
+      { de: 'Herr Kommandant ist nicht erfreut!', en: 'Herr Kommandant... is not pleased.' },
+      { de: 'Sie sind eine Enttäuschung!', en: 'You are... a disappointment.' },
+      { de: 'Disziplin! Haben Sie das vergessen?', en: 'Discipline. Have you forgotten that.' },
+      { de: 'Ich beobachte Sie! Arbeiten Sie!', en: 'I am watching you. Get to work.' },
+      { de: 'Schluss mit dem Unsinn!', en: 'Enough... with the nonsense.' },
+      { de: 'Das ist Ihre letzte Warnung!', en: 'This is... your final warning.' },
+      { de: 'Herr Kommandant verliert die Geduld!', en: 'Herr Kommandant... is losing patience.' },
+      { de: 'Sie haben es so gewollt!', en: 'You... asked for this.' },
+      { de: 'Die Konsequenzen sind unvermeidlich!', en: 'The consequences... are inevitable.' },
+      { de: 'Drei Mal habe ich Sie gewarnt!', en: 'Three times... I have warned you.' },
+      { de: 'Jetzt reicht es!', en: 'That... is enough.' },
       { de: 'ALARM! ALARM! TOTALER ARBEITSVERWEIGERUNG FESTGESTELLT!',
-        en: 'ALARM! ALARM! TOTAL WORK REFUSAL DETECTED!' },
-      { de: 'ACHTUNG! SOFORTIGE RÜCKKEHR ZUR ARBEIT!', en: 'ATTENTION! IMMEDIATE RETURN TO WORK!' },
-      { de: 'HERR KOMMANDANT HAT GENUG!', en: 'HERR KOMMANDANT HAS HAD ENOUGH!' },
-      { de: 'DAS IST DER LETZTE BEFEHL!', en: 'THIS IS THE FINAL ORDER!' }
+        en: 'ALARM. ALARM. Total work refusal... detected.' },
+      { de: 'ACHTUNG! SOFORTIGE RÜCKKEHR ZUR ARBEIT!', en: 'ATTENTION. Immediate return... to work.' },
+      { de: 'HERR KOMMANDANT HAT GENUG!', en: 'Herr Kommandant... has had enough.' },
+      { de: 'DAS IST DER LETZTE BEFEHL!', en: 'This is... the final order.' }
     ].freeze
 
     # How many German+English line pairs per tier
@@ -176,7 +176,7 @@ module Kommandant
     # Speak text with German voice (Anna by default)
     def speak_german(text)
       voice = tts_voice_german
-      speed = tts_speed
+      speed = tts_speed_german
       escaped = escape_shell(text)
       safe_system("say -v '#{voice}' -r #{speed} '#{escaped}'")
     end
@@ -184,7 +184,7 @@ module Kommandant
     # Speak text with English voice (Daniel by default — British accent)
     def speak_english(text)
       voice = tts_voice_english
-      speed = tts_speed
+      speed = tts_speed_english
       escaped = escape_shell(text)
       safe_system("say -v '#{voice}' -r #{speed} '#{escaped}'")
     end
@@ -302,10 +302,16 @@ module Kommandant
       voice_config.fetch('tts_voice_english', 'Daniel')
     end
 
-    # Get the configured TTS speed.
-    def tts_speed
+    # Get the configured TTS speed for German voice.
+    def tts_speed_german
       voice_config = @config.fetch('voice', {})
-      voice_config.fetch('speed', 185).to_i
+      voice_config.fetch('speed', 175).to_i
+    end
+
+    # Get the configured TTS speed for English voice (slower = more natural).
+    def tts_speed_english
+      voice_config = @config.fetch('voice', {})
+      voice_config.fetch('speed_english', 140).to_i
     end
 
     # --- Safety Helpers ---
