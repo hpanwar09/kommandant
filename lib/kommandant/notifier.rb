@@ -2,43 +2,75 @@
 
 module Kommandant
   # Delivers macOS notifications, sounds, and TTS based on tier level.
-  # Pattern: Tink sound → German lines (Anna) → English translation (Daniel/Samantha)
-  # Exception: Tier 3 = silent, just opens video fullscreen.
+  # Escalation arc: passive-aggressive → formally disappointed → theatrical → meltdown.
   # All system calls are wrapped in begin/rescue — never crashes.
   class Notifier
-    # German lines paired with English translations.
-    # Each tier picks N pairs (scaling up with severity).
-    LINES = [
-      { de: 'Achtung! Was machen Sie da?', en: 'Attention... What are you doing.' },
-      { de: 'Zurück an die Arbeit, sofort!', en: 'Back to work. Immediately.' },
-      { de: 'Das ist unakzeptabel!', en: 'This is... unacceptable.' },
-      { de: 'Herr Kommandant ist nicht erfreut!', en: 'Herr Kommandant... is not pleased.' },
-      { de: 'Sie sind eine Enttäuschung!', en: 'You are... a disappointment.' },
-      { de: 'Disziplin! Haben Sie das vergessen?', en: 'Discipline. Have you forgotten that.' },
-      { de: 'Ich beobachte Sie! Arbeiten Sie!', en: 'I am watching you. Get to work.' },
-      { de: 'Schluss mit dem Unsinn!', en: 'Enough... with the nonsense.' },
-      { de: 'Das ist Ihre letzte Warnung!', en: 'This is... your final warning.' },
-      { de: 'Herr Kommandant verliert die Geduld!', en: 'Herr Kommandant... is losing patience.' },
-      { de: 'Sie haben es so gewollt!', en: 'You... asked for this.' },
-      { de: 'Die Konsequenzen sind unvermeidlich!', en: 'The consequences... are inevitable.' },
-      { de: 'Drei Mal habe ich Sie gewarnt!', en: 'Three times... I have warned you.' },
-      { de: 'Jetzt reicht es!', en: 'That... is enough.' },
-      { de: 'ALARM! ALARM! TOTALER ARBEITSVERWEIGERUNG FESTGESTELLT!',
-        en: 'ALARM. ALARM. Total work refusal... detected.' },
-      { de: 'ACHTUNG! SOFORTIGE RÜCKKEHR ZUR ARBEIT!', en: 'ATTENTION. Immediate return... to work.' },
-      { de: 'HERR KOMMANDANT HAT GENUG!', en: 'Herr Kommandant... has had enough.' },
-      { de: 'DAS IST DER LETZTE BEFEHL!', en: 'This is... the final order.' }
+    # --- Tier 1: Notification-only lines (passive-aggressive, dry) ---
+    HINT_SUBTITLES = %w[Hmm. Notiert. Interesting. ...].freeze
+
+    HINT_MESSAGES = [
+      'I see you have chosen... leisure.',
+      'This is not what we discussed in the briefing.',
+      'I am choosing to believe this is research.',
+      'Herr Kommandant sees all. Even this.',
+      'Your productivity report will reflect this moment.'
     ].freeze
 
-    # How many German+English line pairs per tier
-    LINES_PER_TIER = { 1 => 1, 2 => 2, 3 => 0, 4 => 3 }.freeze
+    # --- Tier 2: Formally disappointed (1 TTS pair) ---
+    ADMONITION_LINES = [
+      { de: 'Ich bin nicht wütend. Nur enttäuscht.', en: 'I am not angry. Just... disappointed.' },
+      { de: 'Das Vaterland braucht Sie an der Tastatur.', en: 'The fatherland needs you... at the keyboard.' },
+      { de: 'Haben Sie vergessen, wofür Sie bezahlt werden?',
+        en: 'Have you forgotten... what you are paid for?' },
+      { de: 'Ich habe alles gesehen. Alles.', en: 'I have seen everything. Everything.' },
+      { de: 'Das steht jetzt in Ihrer Akte.', en: 'This is now... in your permanent file.' },
+      { de: 'Fünf Minuten. Fünf lange Minuten.', en: 'Five minutes. Five... long... minutes.' }
+    ].freeze
 
+    # --- Tier 3: Theatrical dramatic (2 TTS pairs) ---
+    REPRIMAND_LINES = [
+      { de: 'Mein Gott, haben Sie keinen Stolz?!', en: 'My God... have you no pride?!' },
+      { de: 'Ich schreibe das in Ihre Akte! Mit roter Tinte!',
+        en: 'I am writing this in your file. In red ink.' },
+      { de: 'Drei Generäle sind für weniger degradiert worden!',
+        en: 'Three generals have been demoted... for less.' },
+      { de: 'In dreißig Jahren Dienst habe ich so etwas nie gesehen.',
+        en: 'In thirty years of service... I have never seen anything like this.' },
+      { de: 'Sie testen meine Geduld. Und meine Geduld verliert.',
+        en: 'You are testing my patience. And my patience... is losing.' },
+      { de: 'Soll ich Ihren Bildschirm an die Geschäftsleitung weiterleiten?',
+        en: 'Shall I forward your screen... to senior management?' },
+      { de: 'Das ist eine Schande für die gesamte Abteilung!',
+        en: 'This is a disgrace... to the entire department!' }
+    ].freeze
+
+    # --- Tier 4: Full meltdown (3 TTS pairs) ---
+    INTERVENTION_LINES = [
+      { de: 'ACHTUNG! Dies ist keine Übung!', en: 'ATTENTION. This... is not a drill.' },
+      { de: 'Sie zwingen mich zu drastischen Maßnahmen!',
+        en: 'You are forcing me... to take drastic measures.' },
+      { de: 'Herr Kommandant hat alles versucht. ALLES!',
+        en: 'Herr Kommandant has tried everything. EVERYTHING.' },
+      { de: 'Rufen Sie meine Mutter an. Sagen Sie ihr, ich habe versagt.',
+        en: 'Call my mother. Tell her... I have failed.' },
+      { de: 'Zwanzig Minuten! Das ist ein Kriegsverbrechen!',
+        en: 'Twenty minutes! This is... a war crime.' },
+      { de: 'Ich kündige! Nein, warten Sie. SIE kündigen!',
+        en: 'I quit! No wait. YOU quit!' },
+      { de: 'Das ist der dunkelste Tag meiner Karriere!',
+        en: 'This is the darkest day... of my career.' },
+      { de: 'Ich werde das dem Tribunal melden!',
+        en: 'I will be reporting this... to the tribunal.' }
+    ].freeze
+
+    # --- Praise lines (notification only, no TTS) ---
     PRAISE_LINES = [
-      { de: 'Gut gemacht, Soldat!', en: 'Well done, soldier!' },
-      { de: 'Sehr gut! So ist es richtig!', en: 'Very good! That is how it should be!' },
-      { de: 'Ausgezeichnet! Weiter so!', en: 'Excellent! Keep it up!' },
-      { de: 'Herr Kommandant ist zufrieden!', en: 'Herr Kommandant is satisfied!' },
-      { de: 'Disziplin zahlt sich aus!', en: 'Discipline pays off!' }
+      'Endlich! I had given up hope.',
+      'Good. Very good. You may continue to live.',
+      'Herr Kommandant is... cautiously optimistic.',
+      'A miracle! Write down the date!',
+      'Acceptable. Barely... acceptable.',
+      'Welcome back, soldier. I was... concerned.'
     ].freeze
 
     INTERVENTION_VIDEO = 'https://www.youtube.com/watch?v=OO14VSx74MU'
@@ -54,6 +86,12 @@ module Kommandant
       submarine: '/System/Library/Sounds/Submarine.aiff',
       glass: '/System/Library/Sounds/Glass.aiff'
     }.freeze
+
+    # How many German+English TTS pairs per tier
+    LINES_PER_TIER = { 1 => 0, 2 => 1, 3 => 2, 4 => 3 }.freeze
+
+    # Volume bump for tier 4 (firm, not obnoxious)
+    INTERVENTION_VOLUME = 75
 
     # @param config [Hash] the loaded config hash (Kommandant::Config.to_h)
     def initialize(config)
@@ -72,97 +110,109 @@ module Kommandant
       case tier
       when 1 then notify_tier1(reason)
       when 2 then notify_tier2(reason)
-      when 3 then notify_tier3
+      when 3 then notify_tier3(reason)
       when 4 then notify_tier4(reason)
       end
     end
 
     # Positive reinforcement when user gets back to work.
+    # Notification only — no sound, no voice.
     #
     # @param rank [String] optional rank display
     # @param streak_minutes [Integer] how many minutes of focused work
     def praise(rank: nil, streak_minutes: 0) # rubocop:disable Lint/UnusedMethodArgument
-      pair = PRAISE_LINES.sample
-      message = praise_message(pair, streak_minutes)
+      message = PRAISE_LINES.sample
+      message = "#{message} (#{streak_minutes} min focused)" if streak_minutes.positive?
 
-      display_praise_notification(message)
-      play_sound(:hero)
-      speak_pair(pair) if voice_enabled?
+      display_notification(
+        message: message,
+        title: '🎖️ Herr Kommandant',
+        subtitle: 'Gut.',
+        sound: 'default'
+      )
     end
 
     private
 
     # --- Tier Implementations ---
 
-    # Tier 1 (1 min): Tink → 1 German line → English translation
+    # Tier 1 (2 min): Notification only — no sound, no voice.
+    # Passive-aggressive nudge. Easily dismissed.
     def notify_tier1(reason)
+      subtitle = HINT_SUBTITLES.sample
+      hint = HINT_MESSAGES.sample
+
       display_notification(
-        message: reason,
+        message: "#{hint} (#{reason})",
         title: '🎖️ Herr Kommandant',
-        subtitle: 'Gentle Reminder',
-        sound: 'Tink'
+        subtitle: subtitle,
+        sound: 'default'
       )
-      play_sound(:submarine)
-
-      return unless voice_enabled?
-
-      pairs = LINES.sample(LINES_PER_TIER[1])
-      speak_pairs(pairs)
     end
 
-    # Tier 2 (5 min): Tink → 2 German lines → English translations
+    # Tier 2 (5 min): Tink sound + 1 German/English TTS pair.
+    # Formally disappointed — a stern headmaster.
     def notify_tier2(reason)
       display_notification(
         message: reason,
         title: '🎖️ Herr Kommandant',
-        subtitle: 'Stern Warning',
+        subtitle: 'Formelle Ermahnung',
         sound: 'Tink'
+      )
+      play_sound(:tink)
+
+      return unless voice_enabled?
+
+      pairs = ADMONITION_LINES.sample(LINES_PER_TIER[2])
+      speak_pairs(pairs)
+    end
+
+    # Tier 3 (12 min): Submarine sound + 2 German/English TTS pairs.
+    # Theatrically dramatic — performing outrage.
+    def notify_tier3(reason)
+      display_notification(
+        message: reason,
+        title: '🎖️ Herr Kommandant',
+        subtitle: 'UNAKZEPTABEL',
+        sound: 'Submarine'
       )
       play_sound(:submarine)
 
       return unless voice_enabled?
 
-      pairs = LINES.sample(LINES_PER_TIER[2])
+      pairs = REPRIMAND_LINES.sample(LINES_PER_TIER[3])
       speak_pairs(pairs)
     end
 
-    # Tier 3 (10 min): NO sound, NO voice — just open video fullscreen
-    def notify_tier3
-      open_video_fullscreen(INTERVENTION_VIDEO)
-    end
-
-    # Tier 4 (25 min): Tink → 3 German lines → English translations → YouTube full volume in 4 quadrant windows
+    # Tier 4 (20 min): Basso + volume bump + 3 TTS pairs + motivational video.
+    # Full theatrical meltdown — devastated, betrayed.
     def notify_tier4(reason)
       display_notification(
         message: reason,
         title: '🚨 HERR KOMMANDANT 🚨',
-        subtitle: 'NUCLEAR OPTION ACTIVATED',
-        sound: 'Tink'
+        subtitle: 'DEFCON EINS',
+        sound: 'Basso'
       )
-      play_sound(:submarine)
-      change_volume(100)
+      play_sound(:basso)
+      change_volume(INTERVENTION_VOLUME)
 
       if voice_enabled?
-        pairs = LINES.sample(LINES_PER_TIER[4])
+        pairs = INTERVENTION_LINES.sample(LINES_PER_TIER[4])
         speak_pairs(pairs)
       end
 
-      open_video_quadrants(INTERVENTION_VIDEO)
+      open_video(INTERVENTION_VIDEO)
     end
 
     # --- Voice Helpers ---
 
-    # Speak German+English pairs sequentially: German first (Anna), then English (Daniel/Samantha)
+    # Speak German+English pairs sequentially: German first (Anna), then English (Daniel)
     def speak_pairs(pairs)
       pairs.each do |pair|
         speak_german(pair[:de])
+        sleep(2)
         speak_english(pair[:en])
       end
-    end
-
-    def speak_pair(pair)
-      speak_german(pair[:de])
-      speak_english(pair[:en])
     end
 
     # Speak text with German voice (Anna by default)
@@ -212,72 +262,16 @@ module Kommandant
       safe_system("osascript -e 'set volume output volume #{level}'")
     end
 
-    # Open a URL in the default browser.
-    def open_url(url)
-      safe_system("open '#{escape_shell(url)}'")
+    # Open a video URL in the default browser from the beginning.
+    def open_video(url)
+      fullscreen_url = ensure_video_params(url)
+      safe_system("open '#{escape_shell(fullscreen_url)}'")
     end
 
-    # Open a video URL in fullscreen using AppleScript to enter fullscreen mode.
-    def open_video_fullscreen(url)
-      open_url(url)
-      # Give browser a moment to open the tab, then send Cmd+Shift+F for YouTube fullscreen
-      sleep 2
-      safe_system('osascript -e \'tell application "System Events" to keystroke "f"\'')
-    end
-
-    # Open video in 4 browser windows, one in each screen quadrant.
-    # Uses AppleScript to position Chrome/Safari windows.
-    def open_video_quadrants(url)
-      script = build_quadrant_script(url)
-      safe_system("osascript -e '#{escape_shell(script)}'")
-    end
-
-    def build_quadrant_script(url)
-      escaped_url = escape_applescript(url)
-      <<~APPLESCRIPT
-        tell application "Finder"
-          set screenBounds to bounds of window of desktop
-          set screenWidth to item 3 of screenBounds
-          set screenHeight to item 4 of screenBounds
-        end tell
-
-        set halfW to screenWidth div 2
-        set halfH to screenHeight div 2
-
-        tell application "Google Chrome"
-          activate
-          #{quadrant_window_script(escaped_url)}
-        end tell
-      APPLESCRIPT
-    end
-
-    def quadrant_window_script(url)
-      positions = [
-        '{0, 0, halfW, halfH}',
-        '{halfW, 0, screenWidth, halfH}',
-        '{0, halfH, halfW, screenHeight}',
-        '{halfW, halfH, screenWidth, screenHeight}'
-      ]
-      positions.map.with_index(1) do |bounds, i|
-        [
-          "set win#{i} to make new window",
-          "set URL of active tab of win#{i} to \"#{url}\"",
-          "set bounds of win#{i} to #{bounds}"
-        ].join("\n          ")
-      end.join("\n          ")
-    end
-
-    def praise_message(pair, streak_minutes)
-      streak_minutes.positive? ? "#{pair[:de]} (#{streak_minutes} min focused)" : pair[:de]
-    end
-
-    def display_praise_notification(message)
-      display_notification(
-        message: message,
-        title: '🎖️ Herr Kommandant',
-        subtitle: 'Impressive, Soldat!',
-        sound: 'Hero'
-      )
+    # Ensure YouTube URL has autoplay=1 and start=0 params.
+    def ensure_video_params(url)
+      separator = url.include?('?') ? '&' : '?'
+      "#{url}#{separator}autoplay=1&start=0"
     end
 
     # --- Config Helpers ---
@@ -285,7 +279,7 @@ module Kommandant
     # Check if a tier is enabled in config.
     def tier_enabled?(tier_num)
       tc = tier_config(tier_num)
-      tc.fetch('enabled', tier_num <= 3)
+      tc.fetch('enabled', true)
     end
 
     # Get the config hash for a specific tier.

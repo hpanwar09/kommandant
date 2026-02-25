@@ -60,8 +60,8 @@ module Kommandant
       Config.load
       @tracker = Tracker.new
       @detector = Detector.new
-      @classifier = Classifier.new
-      @notifier = Notifier.new
+      @classifier = Classifier.new(Config.to_h)
+      @notifier = Notifier.new(Config.to_h)
       @last_midnight_check = Time.now
     end
 

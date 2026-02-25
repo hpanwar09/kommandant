@@ -6,17 +6,19 @@ module Kommandant
   # Threshold seconds come from config; enabled/disabled flags are respected.
   module Tier
     TIERS = {
-      0 => { name: 'Reconnaissance',    description: 'Silent monitoring', color: :white }.freeze,
-      1 => { name: 'Gentle Nudge',      description: 'Tink + 1 German/English line', color: :yellow }.freeze,
-      2 => { name: 'Stern Warning',     description: 'Tink + 2 German/English lines',
+      0 => { name: 'Beobachtung', description: 'Silent monitoring', color: :white }.freeze,
+      1 => { name: 'Der Hinweis',          description: 'Notification only — passive-aggressive nudge',
+             color: :yellow }.freeze,
+      2 => { name: 'Die Ermahnung',        description: 'Tink + 1 German/English TTS pair',
              color: :bright_yellow }.freeze,
-      3 => { name: 'Full Intervention', description: 'Silent — opens video fullscreen', color: :red }.freeze,
-      4 => { name: 'Nuclear',           description: 'Tink + 3 lines + 4 quadrant video walls',
+      3 => { name: 'Der Verweis',          description: 'Submarine + 2 German/English TTS pairs',
+             color: :red }.freeze,
+      4 => { name: 'Die Intervention',     description: 'Basso + 3 TTS pairs + motivational video',
              color: :bright_red }.freeze
     }.freeze
 
     # Default thresholds (seconds) used when config is unavailable
-    DEFAULT_THRESHOLDS = { 1 => 60, 2 => 300, 3 => 600, 4 => 1500 }.freeze
+    DEFAULT_THRESHOLDS = { 1 => 120, 2 => 300, 3 => 720, 4 => 1200 }.freeze
 
     class << self
       # Determine the appropriate tier based on accumulated slack seconds.
@@ -60,12 +62,8 @@ module Kommandant
 
         value = fetch_tier_field(tier_number, 'enabled', config)
 
-        # Treat nil as enabled by default for tiers 1–2, disabled for 3–4
-        if value.nil?
-          tier_number <= 3
-        else
-          !!value
-        end
+        # Treat nil as enabled by default for all tiers
+        value.nil? || !!value
       end
 
       # Convenience: tier name string

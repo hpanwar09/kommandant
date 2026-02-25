@@ -85,6 +85,22 @@ module Kommandant
       puts "Kommandant v#{VERSION}"
     end
 
+    desc 'test [TIER]', 'Test a specific tier (1-4), praise, or all'
+    def test(tier = 'all')
+      Config.load
+      notifier = Notifier.new(Config.to_h)
+      reason = 'Test mode — Caught on youtube.com (Google Chrome)'
+
+      case tier.downcase
+      when '1' then fire_tier(notifier, 1, reason)
+      when '2' then fire_tier(notifier, 2, reason)
+      when '3' then fire_tier(notifier, 3, reason)
+      when '4' then fire_tier(notifier, 4, reason)
+      when 'praise' then fire_praise(notifier)
+      when 'all' then fire_all(notifier, reason)
+      else puts "Unknown tier: #{tier}. Use 1-4, praise, or all."
+      end
+    end
     map %w[--version -v] => :version
 
     private
@@ -179,6 +195,30 @@ module Kommandant
       true
     rescue Errno::ESRCH, Errno::EPERM
       false
+    end
+
+    def fire_tier(notifier, tier, reason)
+      tier_info = Tier.info(tier)
+      puts "\n▒▒ Tier #{tier}: #{tier_info[:name]} ▒▒"
+      puts "   #{tier_info[:description]}\n\n"
+      notifier.notify(tier: tier, reason: reason)
+      puts "   ✓ Tier #{tier} complete"
+    end
+
+    def fire_praise(notifier)
+      puts "\n▒▒ Praise ▒▒\n\n"
+      notifier.praise(streak_minutes: 15)
+      puts '   ✓ Praise complete'
+    end
+
+    def fire_all(notifier, reason)
+      (1..4).each do |tier|
+        fire_tier(notifier, tier, reason)
+        sleep 4 unless tier == 4
+      end
+      sleep 4
+      fire_praise(notifier)
+      puts "\nAll tiers complete."
     end
   end
 end

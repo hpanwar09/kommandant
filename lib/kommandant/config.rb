@@ -81,7 +81,7 @@ module Kommandant
       'tiers' => {
         1 => {
           'enabled' => true,
-          'after' => 60
+          'after' => 120
         },
         2 => {
           'enabled' => true,
@@ -89,11 +89,11 @@ module Kommandant
         },
         3 => {
           'enabled' => true,
-          'after' => 600
+          'after' => 720
         },
         4 => {
-          'enabled' => false,
-          'after' => 1500
+          'enabled' => true,
+          'after' => 1200
         }
       },
       'schedule' => {
